@@ -19,10 +19,26 @@ TWELVE_DATA_KEY = os.environ["TWELVE_DATA_KEY"]
 TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-TICKERS = os.environ.get(
-    "TICKERS",
-    "TSLA,NVDA,AMD,PLTR,COIN,MARA,RIOT,MSTR,SOFI,SMCI,RIVN,LCID,SNAP,DKNG,CVNA,AI,F,NIO,PYPL,BABA"
-).split(",")
+DEFAULT_TICKERS = "TSLA,NVDA,AMD,PLTR,COIN,MARA,RIOT,MSTR,SOFI,SMCI,RIVN,LCID,SNAP,DKNG,CVNA,AI,F,NIO,PYPL,BABA"
+
+
+def load_tickers():
+    """Prioridad: watchlist_today.txt generada por el Radar Diario > variable TICKERS > lista fija."""
+    try:
+        with open("watchlist_today.txt") as f:
+            content = f.read().strip()
+            if content:
+                tickers = [t.strip() for t in content.split(",") if t.strip()]
+                if tickers:
+                    print(f"Usando watchlist del Radar Diario: {tickers}")
+                    return tickers
+    except FileNotFoundError:
+        pass
+    print("Sin watchlist del Radar Diario, usando lista por defecto / TICKERS")
+    return os.environ.get("TICKERS", DEFAULT_TICKERS).split(",")
+
+
+TICKERS = load_tickers()
 
 MIN_CHANGE = float(os.environ.get("MIN_CHANGE", 2))       # % cambio mínimo hoy (abs)
 MIN_REL_VOL = float(os.environ.get("MIN_REL_VOL", 1.5))   # volumen relativo mínimo
