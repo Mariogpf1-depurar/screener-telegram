@@ -27,7 +27,7 @@ TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 MAX_RESULTS = int(os.environ.get("RADAR_MAX_RESULTS", 10))
-MIN_STARS = int(os.environ.get("RADAR_MIN_STARS", 3))
+MIN_STARS = int(os.environ.get("RADAR_MIN_STARS", 1))
 REQUEST_DELAY = float(os.environ.get("RADAR_REQUEST_DELAY", 7.5))  # respeta ~8 req/min
 
 
