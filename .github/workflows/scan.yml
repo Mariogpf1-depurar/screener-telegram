@@ -1,0 +1,29 @@
+name: Screener Intradía
+
+on:
+  schedule:
+    # Cada 15 min, de 13:30 a 20:00 UTC aprox (horario NYSE), lunes a viernes.
+    # GitHub no soporta minuto de inicio fraccionado en el rango de horas,
+    # así que se ejecuta cada 15 min entre las 13 y las 20 UTC; el propio
+    # script comprueba internamente si el mercado está abierto antes de escanear.
+    - cron: '*/15 13-20 * * 1-5'
+  workflow_dispatch: {}   # permite lanzarlo manualmente desde la pestaña Actions
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - run: python screener.py
+        env:
+          TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
