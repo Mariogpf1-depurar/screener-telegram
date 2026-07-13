@@ -71,6 +71,13 @@ def main():
     results.sort(key=lambda r: (r["stars"], r["rms_score"] + r["lmc_score"]), reverse=True)
     top = results[:MAX_RESULTS]
 
+    # Guarda la watchlist del día para que el screener intradía la use como lista prioritaria
+    try:
+        with open("watchlist_today.txt", "w") as f:
+            f.write(",".join(r["ticker"] for r in top))
+    except Exception as e:
+        print(f"No se pudo escribir watchlist_today.txt: {e}")
+
     if not top:
         send_telegram_message("🌅 <b>Radar Diario</b>\nNinguna oportunidad por encima del mínimo de estrellas hoy.")
         return
