@@ -29,6 +29,9 @@ TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 MAX_RESULTS = int(os.environ.get("RADAR_MAX_RESULTS", 10))
 MIN_STARS = int(os.environ.get("RADAR_MIN_STARS", 1))
 REQUEST_DELAY = float(os.environ.get("RADAR_REQUEST_DELAY", 7.5))  # respeta ~8 req/min
+REGION = os.environ.get("REGION", "usa")  # "usa" o "europe"
+WATCHLIST_FILE = "watchlist_today.txt" if REGION == "usa" else "watchlist_today_europe.txt"
+REGION_LABEL = "🇺🇸 EEUU" if REGION == "usa" else "🇪🇺 Europa"
 
 
 def fetch_daily_series(symbol, outputsize=260):
@@ -52,7 +55,7 @@ def send_telegram_message(text):
 
 
 def main():
-    universe = flat_universe()
+    universe = flat_universe(REGION)
     results = []
 
     for i, (ticker, sector) in enumerate(universe):
@@ -73,16 +76,16 @@ def main():
 
     # Guarda la watchlist del día para que el screener intradía la use como lista prioritaria
     try:
-        with open("watchlist_today.txt", "w") as f:
+        with open(WATCHLIST_FILE, "w") as f:
             f.write(",".join(r["ticker"] for r in top))
     except Exception as e:
-        print(f"No se pudo escribir watchlist_today.txt: {e}")
+        print(f"No se pudo escribir {WATCHLIST_FILE}: {e}")
 
     if not top:
-        send_telegram_message("🌅 <b>Radar Diario</b>\nNinguna oportunidad por encima del mínimo de estrellas hoy.")
+        send_telegram_message(f"🌅 <b>Radar Diario {REGION_LABEL}</b>\nNinguna oportunidad por encima del mínimo de estrellas hoy.")
         return
 
-    header = f"🌅 <b>Radar Diario</b> — {len(top)} oportunidad(es) (de {len(universe)} analizadas)\n"
+    header = f"🌅 <b>Radar Diario {REGION_LABEL}</b> — {len(top)} oportunidad(es) (de {len(universe)} analizadas)\n"
     send_telegram_message(header)
 
     for r in top:
