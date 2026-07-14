@@ -46,10 +46,31 @@ UNIVERSE = {
 }
 
 
-def flat_universe():
-    """Devuelve lista de (ticker, sector) sin duplicados (se queda con el primer sector visto)."""
+EUROPE_UNIVERSE = {
+    "IBEX 35": [
+        "SAN.MC", "BBVA.MC", "ITX.MC", "IBE.MC", "TEF.MC", "REP.MC", "FER.MC",
+        "AENA.MC", "AMS.MC", "CLNX.MC", "NTGY.MC", "ELE.MC", "GRF.MC", "ACS.MC",
+        "IAG.MC", "ANA.MC", "SAB.MC", "CABK.MC", "MAP.MC", "ENG.MC",
+    ],
+    "DAX (Alemania)": [
+        "SAP.DE", "SIE.DE", "ALV.DE", "DTE.DE", "BAS.DE", "BMW.DE", "MBG.DE",
+        "VOW3.DE", "MUV2.DE", "ADS.DE", "DBK.DE", "IFX.DE", "RWE.DE",
+    ],
+    "CAC 40 (Francia)": [
+        "MC.PA", "OR.PA", "TTE.PA", "SAN.PA", "AIR.PA", "BNP.PA", "SU.PA",
+        "AI.PA", "DG.PA", "CS.PA", "BN.PA", "KER.PA",
+    ],
+    "Otros Europa": [
+        "NESN.SW", "NOVN.SW", "ROG.SW", "ASML.AS", "SHEL.L", "AZN.L", "ULVR.L",
+    ],
+}
+
+
+def flat_universe(region="usa"):
+    """region: 'usa' (por defecto) o 'europe'."""
+    source = EUROPE_UNIVERSE if region == "europe" else UNIVERSE
     seen = {}
-    for sector, tickers in UNIVERSE.items():
+    for sector, tickers in source.items():
         for t in tickers:
             if t not in seen:
                 seen[t] = sector
