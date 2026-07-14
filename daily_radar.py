@@ -20,11 +20,11 @@ from analysis import analyze_daily
 from universe import flat_universe
 from finnhub_client import build_catalyst_summary
 
-FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "")
+FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "").strip()
 
-TWELVE_DATA_KEY = os.environ["TWELVE_DATA_KEY"]
-TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+TWELVE_DATA_KEY = os.environ["TWELVE_DATA_KEY"].strip()
+TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"].strip()
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"].strip()
 
 MAX_RESULTS = int(os.environ.get("RADAR_MAX_RESULTS", 10))
 MIN_STARS = int(os.environ.get("RADAR_MIN_STARS", 1))
@@ -60,6 +60,7 @@ def send_telegram_message(text):
 
 
 def main():
+    print(f"[Diagnóstico] Longitud del token de Telegram: {len(TELEGRAM_TOKEN)} caracteres (debería ser 46)")
     universe = flat_universe(REGION)
     results = []
 
