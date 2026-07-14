@@ -19,22 +19,27 @@ TWELVE_DATA_KEY = os.environ["TWELVE_DATA_KEY"]
 TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-DEFAULT_TICKERS = "TSLA,NVDA,AMD,PLTR,COIN,MARA,RIOT,MSTR,SOFI,SMCI,RIVN,LCID,SNAP,DKNG,CVNA,AI,F,NIO,PYPL,BABA"
+DEFAULT_TICKERS_USA = "TSLA,NVDA,AMD,PLTR,COIN,MARA,RIOT,MSTR,SOFI,SMCI,RIVN,LCID,SNAP,DKNG,CVNA,AI,F,NIO,PYPL,BABA"
+DEFAULT_TICKERS_EUROPE = "SAN.MC,BBVA.MC,ITX.MC,IBE.MC,TEF.MC,SAP.DE,SIE.DE,MC.PA,OR.PA,TTE.PA,AIR.PA,ASML.AS"
+
+REGION = os.environ.get("REGION", "usa")  # "usa" o "europe"
+WATCHLIST_FILE = "watchlist_today.txt" if REGION == "usa" else "watchlist_today_europe.txt"
+DEFAULT_TICKERS = DEFAULT_TICKERS_USA if REGION == "usa" else DEFAULT_TICKERS_EUROPE
 
 
 def load_tickers():
-    """Prioridad: watchlist_today.txt generada por el Radar Diario > variable TICKERS > lista fija."""
+    """Prioridad: watchlist generada por el Radar Diario > variable TICKERS > lista fija de la región."""
     try:
-        with open("watchlist_today.txt") as f:
+        with open(WATCHLIST_FILE) as f:
             content = f.read().strip()
             if content:
                 tickers = [t.strip() for t in content.split(",") if t.strip()]
                 if tickers:
-                    print(f"Usando watchlist del Radar Diario: {tickers}")
+                    print(f"Usando watchlist del Radar Diario ({REGION}): {tickers}")
                     return tickers
     except FileNotFoundError:
         pass
-    print("Sin watchlist del Radar Diario, usando lista por defecto / TICKERS")
+    print(f"Sin watchlist del Radar Diario ({REGION}), usando lista por defecto / TICKERS")
     return os.environ.get("TICKERS", DEFAULT_TICKERS).split(",")
 
 
@@ -81,11 +86,14 @@ def fetch_time_series(symbol, interval, outputsize):
 # ---------- Filtro ----------
 
 def is_market_hours():
-    """Comprobación aproximada del horario NYSE (13:30-20:00 UTC, ignora ajustes DST puntuales)."""
+    """Comprobación aproximada de horario de mercado (ignora ajustes DST puntuales).
+    EEUU (NYSE): 13:30-20:00 UTC. Europa (Xetra/Euronext/BME): 07:00-15:30 UTC aprox."""
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
         return False
     minutes = now.hour * 60 + now.minute
+    if REGION == "europe":
+        return 7 * 60 <= minutes <= 15 * 60 + 30
     return 13 * 60 + 30 <= minutes <= 20 * 60
 
 
