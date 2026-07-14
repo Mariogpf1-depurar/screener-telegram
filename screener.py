@@ -8,7 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from analysis import analyze_daily
+from analysis import analyze_daily, evaluate_entry_signal
 from finnhub_client import build_catalyst_summary
 
 FINNHUB_API_KEY = os.environ.get("FINNHUB_API_KEY", "")
@@ -78,7 +78,7 @@ def fetch_time_series(symbol, interval, outputsize):
     values = list(reversed(data["values"]))
     return [
         {"t": v["datetime"], "o": float(v["open"]), "h": float(v["high"]),
-         "l": float(v["low"]), "c": float(v["close"])}
+         "l": float(v["low"]), "c": float(v["close"]), "v": float(v.get("volume") or 0)}
         for v in values
     ]
 
@@ -195,6 +195,7 @@ def main():
 
         # Análisis RMS/LMC sobre datos diarios (para estrellas, entrada/stop/objetivo, RR, leverage)
         analysis_txt = ""
+        signal_txt = ""
         try:
             daily_candles = fetch_time_series(c["ticker"], "1day", 260)
             if daily_candles and len(daily_candles) >= 60:
@@ -209,6 +210,19 @@ def main():
                         f"{a['leverage_note']}\n"
                         f"Catalizador: {build_catalyst_summary(c['ticker'], FINNHUB_API_KEY)}"
                     )
+
+                    # Confirmación intradía real para la señal ENTRAR/ESPERAR
+                    candles_5m = fetch_time_series(c["ticker"], "5min", 60)
+                    candles_15m = fetch_time_series(c["ticker"], "15min", 30)
+                    if candles_5m and candles_15m:
+                        sig = evaluate_entry_signal(a, candles_5m, candles_15m)
+                        emoji = "🟢" if sig["signal"] == "ENTRAR" else "🔴"
+                        lines = [f"{emoji} <b>SEÑAL: {sig['signal']}</b>"]
+                        for r in sig["reasons_ok"]:
+                            lines.append(f"  ✅ {r}")
+                        for r in sig["reasons_fail"]:
+                            lines.append(f"  ❌ {r}")
+                        signal_txt = "\n" + "\n".join(lines)
         except Exception:
             analysis_txt = "\n(No se pudo completar el análisis RMS/LMC para este ticker)"
 
@@ -217,6 +231,7 @@ def main():
             f"Cambio hoy: {c['pct_change']:+.2f}%  |  Vol. relativo: {c['rel_vol']:.2f}x  |  "
             f"Rango día: {c['range_pct']:.2f}%\n"
             f"{flag}"
+            f"{signal_txt}"
             f"{analysis_txt}\n"
             f"Recuerda: esto es solo información de apoyo, no una recomendación de entrada."
         )
