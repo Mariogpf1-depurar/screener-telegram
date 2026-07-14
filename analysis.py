@@ -14,7 +14,7 @@ IMPORTANTE — honestidad sobre lo que esto es y no es:
   son una recomendación nueva generada por el sistema.
 """
 
-from indicators import ema_series, rsi_series, macd_series, atr_last
+from indicators import ema_series, rsi_series, macd_series, atr_last, session_vwap
 
 
 def analyze_daily(candles):
@@ -146,3 +146,73 @@ def leverage_suggestion(stars, rms_score, lmc_score, high_volume):
     if stars == 2:
         return "Baja / especulativa", "Multi x3 (según tu regla: convicción baja)"
     return "Descartar", "No operar (según tu regla: descartar)"
+
+
+def evaluate_entry_signal(daily, candles_5min, candles_15min, min_stars=3):
+    """
+    Combina el análisis diario (daily, de analyze_daily) con confirmación
+    intradía real para dar una señal clara: ENTRAR o ESPERAR, con las
+    razones exactas. No es una caja negra: cada condición se explica.
+
+    candles_5min / candles_15min: velas en orden cronológico con 'o','h','l','c','v'.
+    """
+    reasons_ok = []
+    reasons_fail = []
+
+    # 1. Estrellas mínimas del análisis diario
+    if daily["stars"] >= min_stars:
+        reasons_ok.append(f"Estrellas diarias {daily['stars']}/5 (mínimo {min_stars})")
+    else:
+        reasons_fail.append(f"Estrellas diarias {daily['stars']}/5 (mínimo {min_stars})")
+
+    # 2. RR mínimo
+    rr_txt = f"{daily['rr']:.2f}" if daily["rr"] else "N/D"
+    if daily["rr"] and daily["rr"] >= 2:
+        reasons_ok.append(f"RR {rr_txt} (mínimo 2)")
+    else:
+        reasons_fail.append(f"RR {rr_txt} (mínimo 2)")
+
+    if len(candles_5min) < 20 or len(candles_15min) < 5:
+        reasons_fail.append("Datos intradía insuficientes para confirmar")
+        return {"signal": "ESPERAR", "reasons_ok": reasons_ok, "reasons_fail": reasons_fail}
+
+    closes_5m = [c["c"] for c in candles_5min]
+    current_price = closes_5m[-1]
+
+    # 3. VWAP de sesión (5 min)
+    vwap = session_vwap(candles_5min)
+    vwap_txt = f"${vwap:.2f}" if vwap else "N/D"
+    if vwap and current_price > vwap:
+        reasons_ok.append(f"Precio (${current_price:.2f}) > VWAP ({vwap_txt})")
+    else:
+        reasons_fail.append(f"Precio (${current_price:.2f}) no supera VWAP ({vwap_txt})")
+
+    # 4. Momentum 5 min: EMA9 > EMA20
+    ema9_5m = ema_series(closes_5m, 9)
+    ema20_5m = ema_series(closes_5m, 20)
+    if ema9_5m[-1] is not None and ema20_5m[-1] is not None and ema9_5m[-1] > ema20_5m[-1]:
+        reasons_ok.append("Momentum 5min alcista (EMA9 > EMA20)")
+    else:
+        reasons_fail.append("Momentum 5min no alcista (EMA9 <= EMA20)")
+
+    # 5. Volumen del último tramo de 5 min vs media de los últimos 10
+    vols_5m = [c.get("v", 0) or 0 for c in candles_5min]
+    if len(vols_5m) >= 11:
+        avg_vol = sum(vols_5m[-11:-1]) / 10
+        last_vol = vols_5m[-1]
+        if avg_vol > 0 and last_vol >= avg_vol * 1.2:
+            reasons_ok.append(f"Volumen último tramo {last_vol:.0f} ≥ 1.2x media ({avg_vol:.0f})")
+        else:
+            reasons_fail.append(f"Volumen último tramo {last_vol:.0f} < 1.2x media ({avg_vol:.0f})")
+    else:
+        reasons_fail.append("Sin suficientes velas 5min para comparar volumen")
+
+    # 6. Estructura 15 min: máximos crecientes en últimas 3 velas
+    highs_15m = [c["h"] for c in candles_15min]
+    if len(highs_15m) >= 3 and highs_15m[-1] > highs_15m[-2] > highs_15m[-3]:
+        reasons_ok.append("Máximos crecientes en las últimas 3 velas de 15min")
+    else:
+        reasons_fail.append("Sin máximos crecientes claros en 15min")
+
+    signal = "ENTRAR" if not reasons_fail else "ESPERAR"
+    return {"signal": signal, "reasons_ok": reasons_ok, "reasons_fail": reasons_fail}
